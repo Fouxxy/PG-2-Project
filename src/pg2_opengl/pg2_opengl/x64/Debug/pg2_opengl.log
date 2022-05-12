@@ -1,0 +1,7 @@
+﻿  Rasterizer.cpp
+E:\pg2_PBR_IBL\src\pg2_opengl\pg2_opengl\My_Math.h(15,2): warning C4091: 'static ': ignored on left of 'My_Math' when no variable is declared
+E:\pg2_PBR_IBL\src\pg2_opengl\pg2_opengl\My_Math.h(9,25): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data
+E:\pg2_PBR_IBL\src\pg2_opengl\pg2_opengl\My_Math.h(12,24): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data
+E:\pg2_PBR_IBL\src\pg2_opengl\pg2_opengl\Rasterizer.cpp(598,68): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\pg2_PBR_IBL\src\pg2_opengl\pg2_opengl\Rasterizer.cpp(190): warning C4715: 'Rasterizer::InitOpenGL': not all control paths return a value
+  pg2_opengl.vcxproj -> E:\pg2_PBR_IBL\src\pg2_opengl\x64\Debug\pg2_opengl.exe
