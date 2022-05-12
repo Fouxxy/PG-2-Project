@@ -109,5 +109,11 @@
     <None Include="sphericalToCube.frag">
       <Filter>Source Files\opengl</Filter>
     </None>
+    <None Include="cubeMap.frag">
+      <Filter>Source Files\opengl</Filter>
+    </None>
+    <None Include="cubeMap.vert">
+      <Filter>Source Files\opengl</Filter>
+    </None>
   </ItemGroup>
 </Project>

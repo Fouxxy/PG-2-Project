@@ -10,6 +10,7 @@
 #include <iostream>
 #include "Camera.h"
 #include "My_Shader.h"
+#include "My_Math.h"
 
 // STBI - Possibly replace when I figure out how to use other ways of loading images
 #define STB_IMAGE_IMPLEMENTATION
@@ -30,6 +31,7 @@ Camera _camera = Camera();
 
 unsigned int cubeVAO = 0;
 unsigned int cubeVBO = 0;
+
 void renderCube()
 {
 	// initialize (if necessary)
@@ -100,18 +102,7 @@ void renderCube()
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	glBindVertexArray(0);
 }
-Vector3 cubePositions[] = {
-	Vector3(0.0f,  0.0f,  0.0f),
-	Vector3(2.0f,  5.0f, -15.0f),
-	Vector3(-1.5f, -2.2f, -2.5f),
-	Vector3(-3.8f, -2.0f, -12.3f),
-	Vector3(2.4f, -0.4f, -3.5f),
-	Vector3(-1.7f,  3.0f, -7.5f),
-	Vector3(1.3f, -2.0f, -2.5f),
-	Vector3(1.5f,  2.0f, -2.5f),
-	Vector3(1.5f,  0.2f, -1.5f),
-	Vector3(-1.3f,  1.0f, -1.5f)
-};
+
 
 
 // glfw: whenever the mouse moves, this callback is called
@@ -241,6 +232,7 @@ int Rasterizer::InitOpenGL(const int width, const int height, GLFWwindow* &windo
 	// configure global opengl state
 	// -----------------------------
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
 
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(gl_callback, nullptr);   // velice dulezite at vime co se deje na GPU
@@ -542,6 +534,7 @@ int Rasterizer::MainLoop(int width, int height) {
 	// color_shader("normal_shader.vert", "normal_shader.frag");
 	My_Shader pbr_shader("pbr_shader.vert", "pbr_shader.frag");
 	My_Shader sphericalToCube("sphericalToCube.vert", "sphericalToCube.frag");
+	My_Shader cubeMap("cubeMap.vert", "cubeMap.frag");
 	
 	
 	// Create buffers
@@ -596,7 +589,7 @@ int Rasterizer::MainLoop(int width, int height) {
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 	
 	// load maps
-	unsigned int EXR_irradiance = LoadIrradianceMap("../../../data/enviroment/lebombo_irradiance_map.exr");
+	unsigned int EXR_irradiance = LoadIrradianceMap("../../../data/enviroment/lebombo_prefiltered_env_map_001_2048.exr");
 	std::vector<std::string> fileNames;
 	fileNames.push_back("../../../data/enviroment/lebombo_prefiltered_env_map_001_2048.exr");
 	fileNames.push_back("../../../data/enviroment/lebombo_prefiltered_env_map_010_1024.exr");
@@ -618,14 +611,14 @@ int Rasterizer::MainLoop(int width, int height) {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // enable pre-filter mipmap sampling (combatting visible dots artifact)
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 
 	// pbr: set up projection and view matrices for capturing data onto the 6 cubemap face directions
 	// ----------------------------------------------------------------------------------------------
 	Matrix4x4 captureProjection = _camera.BuildProjectionMatrix(1.0f, 90.0f, 0.1f, 10.0f);
-	
-	
+		
 	
 	Matrix4x4 captureViews[] =
 	{
@@ -664,8 +657,7 @@ int Rasterizer::MainLoop(int width, int height) {
 	// then let OpenGL generate mipmaps from first mip face (combatting visible dots artifact)
 	glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-
-	
+		
 	//	Material material;
 	//material = _materials.find("1")->first;
 	//Color3f diffuse = material.albedo();
@@ -678,6 +670,11 @@ int Rasterizer::MainLoop(int width, int height) {
 	*/
 	// main loop
 	Vector3 lightPosition = Vector3(50.0f, 1.0f, 100.0f);
+
+	Matrix4x4 projection = _camera.BuildProjectionMatrix((float)_screen_width / (float)_screen_height, 45, 0.1f, 100.0f);
+	cubeMap.use();
+	cubeMap.setInt("cubeMap", 0);
+	cubeMap.setMat4("projection", projection);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -734,7 +731,7 @@ int Rasterizer::MainLoop(int width, int height) {
 		Matrix4x4 model = Matrix4x4(); // toto vyplni matici jako identitu
 		//Camera::Scale_uniform(model, 10.0f);
 		Matrix4x4 view = _camera.GetViewMatrix();
-		Matrix4x4 projection = _camera.BuildProjectionMatrix((float)_screen_width /(float)_screen_height, 45, 0.1f, 100.0f);
+		
 		Matrix4x4 P = Matrix4x4(); // nastavuje uniformni promennou P v shaderu, takto presypavam pro kazdy frame data z CPU na GPU
 				
 		P = projection * view * model;
@@ -745,6 +742,12 @@ int Rasterizer::MainLoop(int width, int height) {
 		// render MESH
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, _triangles.size() * sizeof(Vertex3));
+
+		cubeMap.use();
+		cubeMap.setMat4("view", view);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+		renderCube();
 						
 		glfwSwapBuffers(window);
 		glfwPollEvents();
